@@ -14,3 +14,7 @@ keystore/
 *.keystore
 *.p12
 tools/downloads/
+
+tools/*.txt
+
+app/build/

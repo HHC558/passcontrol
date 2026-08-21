@@ -21,7 +21,8 @@ class DiffEngineTest {
         val current = listOf(
             account(1, "GitHub", "user1", "old-pass", "a@b.com"),
             account(2, "淘宝", "taobao", "abc123", null),
-            account(3, "微博", "weibo", "x", null)
+            account(3, "微博", "weibo", "x", null),
+            account(4, "网易", "netease", "y", null)
         )
         val rows = listOf(
             row("GitHub", "user1", "new-pass", "a@b.com"),
@@ -35,7 +36,7 @@ class DiffEngineTest {
         assertEquals("支付宝", diff.added[0].platform)
         assertEquals(2, diff.modified.size)
         assertEquals(1, diff.deleted.size)
-        assertEquals("微博", diff.deleted[0].platform)
+        assertEquals("网易", diff.deleted[0].platform)
         assertEquals(1, diff.unchanged)
         assertEquals(0, diff.skipped)
         assertTrue(diff.hasChanges)
@@ -75,7 +76,7 @@ class DiffEngineTest {
         val diff = DiffEngine.compute(current, rows)
         assertEquals(0, diff.added.size)
         assertEquals(1, diff.unchanged)
-        assertEquals(2, diff.skipped)
+        assertEquals(3, diff.skipped)
     }
 
     @Test

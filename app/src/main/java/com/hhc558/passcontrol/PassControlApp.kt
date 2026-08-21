@@ -21,7 +21,7 @@ class AppContainer(context: Context) {
     val accountDao: AccountDao = database.accountDao()
     val vaultRepository = VaultRepository(prefs, crypto, accountDao)
     val xlsxService = XlsxService()
-    val diffEngine = DiffEngine()
+    val diffEngine = DiffEngine
 
     /** 跨页面共享的导入差异与结果消息（应用级单例状态）。 */
     val importFlow = MutableStateFlow<ImportDiff?>(null)
