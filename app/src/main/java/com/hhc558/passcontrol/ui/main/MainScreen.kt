@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,12 +25,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileUpload
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -52,6 +53,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -68,6 +71,8 @@ import com.hhc558.passcontrol.ui.GlassCard
 import com.hhc558.passcontrol.ui.copyToClipboard
 import com.hhc558.passcontrol.ui.openUrl
 import com.hhc558.passcontrol.ui.theme.ErrorRed
+import com.hhc558.passcontrol.ui.theme.GradientBlue
+import com.hhc558.passcontrol.ui.theme.GradientPurple
 import com.hhc558.passcontrol.ui.theme.Slate400
 import com.hhc558.passcontrol.ui.theme.Slate500
 import com.hhc558.passcontrol.ui.theme.Slate600
@@ -177,7 +182,7 @@ fun MainScreen(navController: NavHostController) {
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(accounts, key = { it.id }) { account ->
                             PlatformCard(
@@ -219,7 +224,7 @@ fun MainScreen(navController: NavHostController) {
     }
 }
 
-/** 平台名称卡片：默认只显示平台名称，点击展开详情（同一时间仅展开一条）。 */
+/** 平台名称卡片：蓝紫渐变背景；默认只显示平台名称，点击展开详情（同一时间仅展开一条）。 */
 @Composable
 private fun PlatformCard(
     account: AccountView,
@@ -231,11 +236,29 @@ private fun PlatformCard(
     onDelete: () -> Unit,
     context: Context
 ) {
+    val corner by animateDpAsState(
+        targetValue = if (expanded) 24.dp else 16.dp,
+        animationSpec = tween(durationMillis = 200),
+        label = "platformCorner"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (expanded) 12.dp else 0.dp,
+        animationSpec = tween(durationMillis = 200),
+        label = "platformElevation"
+    )
+    val shape = RoundedCornerShape(corner)
+
     Box(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = if (expanded) 0.72f else 0.42f))
+            .shadow(
+                elevation = elevation,
+                shape = shape,
+                ambientColor = GradientPurple.copy(alpha = 0.35f),
+                spotColor = GradientBlue.copy(alpha = 0.35f)
+            )
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(GradientBlue, GradientPurple)))
             .clickable(onClick = onToggle)
             .animateContentSize(animationSpec = tween(durationMillis = 200))
             .padding(16.dp)
@@ -246,13 +269,13 @@ private fun PlatformCard(
                     account.platform,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Slate900,
+                    color = Color.White,
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
                     if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = if (expanded) "收起" else "展开",
-                    tint = Slate400
+                    tint = Color.White.copy(alpha = 0.8f)
                 )
             }
             if (expanded) {
@@ -273,7 +296,7 @@ private fun PlatformCard(
                             Icon(
                                 if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription = if (revealed) "隐藏密码" else "显示密码",
-                                tint = Slate600,
+                                tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -288,7 +311,7 @@ private fun PlatformCard(
                                 Icon(
                                     Icons.AutoMirrored.Outlined.OpenInNew,
                                     contentDescription = "打开网址",
-                                    tint = Slate600,
+                                    tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -296,7 +319,7 @@ private fun PlatformCard(
                                 Icon(
                                     Icons.Outlined.ContentCopy,
                                     contentDescription = "复制网址",
-                                    tint = Slate600,
+                                    tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -316,7 +339,7 @@ private fun PlatformCard(
                         Text(
                             "删除",
                             fontSize = 15.sp,
-                            color = ErrorRed,
+                            color = Color.White.copy(alpha = 0.9f),
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center
                         )
@@ -339,14 +362,14 @@ private fun InfoRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
     ) {
-        Text(label, fontSize = 13.sp, color = Slate500, modifier = Modifier.width(60.dp))
-        Text(value, fontSize = 14.sp, color = Slate900, modifier = Modifier.weight(1f))
+        Text(label, fontSize = 13.sp, color = Color.White.copy(alpha = 0.75f), modifier = Modifier.width(60.dp))
+        Text(value, fontSize = 14.sp, color = Color.White, modifier = Modifier.weight(1f))
         if (copyable) {
             IconButton(onClick = onCopy, modifier = Modifier.size(28.dp)) {
                 Icon(
                     Icons.Outlined.ContentCopy,
                     contentDescription = "复制$label",
-                    tint = Slate600,
+                    tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
             }

@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -56,6 +57,8 @@ import com.hhc558.passcontrol.ui.theme.Slate500
 import com.hhc558.passcontrol.ui.theme.Slate600
 import com.hhc558.passcontrol.ui.theme.Slate800
 import com.hhc558.passcontrol.ui.theme.Slate900
+import com.hhc558.passcontrol.ui.theme.GlassGradientEnd
+import com.hhc558.passcontrol.ui.theme.GlassGradientStart
 
 /** 毛玻璃背景：slate-100 底 + 若干柔和实心色块（经模糊），无渐变、无阴影。 */
 @Composable
@@ -103,7 +106,14 @@ fun GlassCard(
     Box(
         modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.58f))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        GlassGradientStart.copy(alpha = 0.75f),
+                        GlassGradientEnd.copy(alpha = 0.75f)
+                    )
+                )
+            )
     ) {
         Column(Modifier.padding(contentPadding), content = content)
     }
