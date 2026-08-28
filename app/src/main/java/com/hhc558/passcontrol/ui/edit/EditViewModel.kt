@@ -29,6 +29,18 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** 保存前校验；不合法时设置错误信息并返回 false。 */
+    fun validate(platform: String, username: String, password: String): Boolean {
+        val err = when {
+            platform.isBlank() -> "请填写平台名称"
+            username.isBlank() -> "请填写账号"
+            password.isBlank() -> "请填写密码"
+            else -> null
+        }
+        _error.value = err
+        return err == null
+    }
+
     fun save(id: Long, platform: String, username: String, password: String, url: String, email: String) {
         when {
             platform.isBlank() -> { _error.value = "请填写平台名称"; return }

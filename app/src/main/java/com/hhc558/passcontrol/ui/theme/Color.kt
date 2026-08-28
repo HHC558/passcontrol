@@ -23,3 +23,6 @@ val GradientBlue = Color(0xFF4F86F7)
 val GradientPurple = Color(0xFF9B6CF7)
 val GlassGradientStart = Color(0xFFEAF1FF)
 val GlassGradientEnd = Color(0xFFF6EDFF)
+// 淡蓝渐变（展开内容区）
+val LightBlueContentStart = Color(0xFFEAF3FF)
+val LightBlueContentEnd = Color(0xFFD6E8FF)

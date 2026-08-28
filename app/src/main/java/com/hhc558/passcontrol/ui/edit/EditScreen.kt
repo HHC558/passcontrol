@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
@@ -53,6 +55,7 @@ fun EditScreen(navController: NavHostController, accountId: Long) {
     var url by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.load(accountId) }
 
@@ -69,6 +72,15 @@ fun EditScreen(navController: NavHostController, accountId: Long) {
     LaunchedEffect(done) {
         if (done) navController.popBackStack()
     }
+
+    SaveConfirmDialog(
+        show = showSaveDialog,
+        onConfirm = {
+            showSaveDialog = false
+            vm.save(accountId, platform, username, password, url, email)
+        },
+        onDismiss = { showSaveDialog = false }
+    )
 
     GlassBackground {
         GlassCard(
@@ -130,7 +142,9 @@ fun EditScreen(navController: NavHostController, accountId: Long) {
                 }
                 Spacer(Modifier.height(28.dp))
                 BlackButton(
-                    onClick = { vm.save(accountId, platform, username, password, url, email) },
+                    onClick = {
+                        if (vm.validate(platform, username, password)) showSaveDialog = true
+                    },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("保存", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
@@ -148,5 +162,26 @@ private fun Row_Back(navController: NavHostController, title: String) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回", tint = Slate900)
         }
         Text(title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Slate900)
+    }
+}
+
+@Composable
+private fun SaveConfirmDialog(
+    show: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (show) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("确认保存") },
+            text = { Text("确认保存本次修改吗？") },
+            confirmButton = {
+                TextButton(onClick = onConfirm) { Text("确认") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("取消") }
+            }
+        )
     }
 }

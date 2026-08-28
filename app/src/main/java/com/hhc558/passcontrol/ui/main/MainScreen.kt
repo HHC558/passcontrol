@@ -73,6 +73,8 @@ import com.hhc558.passcontrol.ui.openUrl
 import com.hhc558.passcontrol.ui.theme.ErrorRed
 import com.hhc558.passcontrol.ui.theme.GradientBlue
 import com.hhc558.passcontrol.ui.theme.GradientPurple
+import com.hhc558.passcontrol.ui.theme.LightBlueContentEnd
+import com.hhc558.passcontrol.ui.theme.LightBlueContentStart
 import com.hhc558.passcontrol.ui.theme.Slate400
 import com.hhc558.passcontrol.ui.theme.Slate500
 import com.hhc558.passcontrol.ui.theme.Slate600
@@ -224,7 +226,7 @@ fun MainScreen(navController: NavHostController) {
     }
 }
 
-/** 平台名称卡片：蓝紫渐变背景；默认只显示平台名称，点击展开详情（同一时间仅展开一条）。 */
+/** 平台名称卡片：蓝紫渐变标题栏 + 展开后淡蓝渐变内容区（分层明显）。 */
 @Composable
 private fun PlatformCard(
     account: AccountView,
@@ -264,6 +266,7 @@ private fun PlatformCard(
             .padding(16.dp)
     ) {
         Column {
+            // 标题栏（蓝紫渐变）
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     account.platform,
@@ -279,70 +282,85 @@ private fun PlatformCard(
                 )
             }
             if (expanded) {
-                Spacer(Modifier.height(16.dp))
-                InfoRow(
-                    label = "账号",
-                    value = account.username,
-                    copyable = true,
-                    onCopy = { copyToClipboard(context, "账号", account.username) }
-                )
-                InfoRow(
-                    label = "密码",
-                    value = if (revealed) account.password else "••••••••",
-                    copyable = revealed,
-                    onCopy = { copyToClipboard(context, "密码", account.password) },
-                    trailing = {
-                        IconButton(onClick = onToggleReveal, modifier = Modifier.size(28.dp)) {
-                            Icon(
-                                if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                contentDescription = if (revealed) "隐藏密码" else "显示密码",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                Spacer(Modifier.height(14.dp))
+                // 内容区（淡蓝渐变，分层明显）
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(LightBlueContentStart, LightBlueContentEnd)
+                            )
+                        )
+                        .padding(14.dp)
+                ) {
+                    Column {
+                        InfoRow(
+                            label = "账号",
+                            value = account.username,
+                            copyable = true,
+                            onCopy = { copyToClipboard(context, "账号", account.username) }
+                        )
+                        InfoRow(
+                            label = "密码",
+                            value = if (revealed) account.password else "••••••••",
+                            copyable = revealed,
+                            onCopy = { copyToClipboard(context, "密码", account.password) },
+                            trailing = {
+                                IconButton(onClick = onToggleReveal, modifier = Modifier.size(28.dp)) {
+                                    Icon(
+                                        if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                        contentDescription = if (revealed) "隐藏密码" else "显示密码",
+                                        tint = Slate600,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        )
+                        account.url?.let { url ->
+                            InfoRow(
+                                label = "网址",
+                                value = url,
+                                trailing = {
+                                    IconButton(onClick = { openUrl(context, url) }, modifier = Modifier.size(28.dp)) {
+                                        Icon(
+                                            Icons.AutoMirrored.Outlined.OpenInNew,
+                                            contentDescription = "打开网址",
+                                            tint = Slate600,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(onClick = { copyToClipboard(context, "网址", url) }, modifier = Modifier.size(28.dp)) {
+                                        Icon(
+                                            Icons.Outlined.ContentCopy,
+                                            contentDescription = "复制网址",
+                                            tint = Slate600,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                             )
                         }
-                    }
-                )
-                account.url?.let { url ->
-                    InfoRow(
-                        label = "网址",
-                        value = url,
-                        trailing = {
-                            IconButton(onClick = { openUrl(context, url) }, modifier = Modifier.size(28.dp)) {
-                                Icon(
-                                    Icons.AutoMirrored.Outlined.OpenInNew,
-                                    contentDescription = "打开网址",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                        account.email?.let { email ->
+                            InfoRow(label = "邮箱", value = email)
+                        }
+                        InfoRow(label = "创建时间", value = Formatters.formatCreatedAt(account.createdAt))
+                        Spacer(Modifier.height(14.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            BlackButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                                Text("编辑", fontSize = 15.sp)
                             }
-                            IconButton(onClick = { copyToClipboard(context, "网址", url) }, modifier = Modifier.size(28.dp)) {
-                                Icon(
-                                    Icons.Outlined.ContentCopy,
-                                    contentDescription = "复制网址",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
+                            TextButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "删除",
+                                    fontSize = 15.sp,
+                                    color = ErrorRed,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
-                    )
-                }
-                account.email?.let { email ->
-                    InfoRow(label = "邮箱", value = email)
-                }
-                InfoRow(label = "创建时间", value = Formatters.formatCreatedAt(account.createdAt))
-                Spacer(Modifier.height(18.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BlackButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                        Text("编辑", fontSize = 15.sp)
-                    }
-                    TextButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
-                        Text(
-                            "删除",
-                            fontSize = 15.sp,
-                            color = Color.White.copy(alpha = 0.9f),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
             }
@@ -362,14 +380,14 @@ private fun InfoRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
     ) {
-        Text(label, fontSize = 13.sp, color = Color.White.copy(alpha = 0.75f), modifier = Modifier.width(60.dp))
-        Text(value, fontSize = 14.sp, color = Color.White, modifier = Modifier.weight(1f))
+        Text(label, fontSize = 13.sp, color = Slate500, modifier = Modifier.width(60.dp))
+        Text(value, fontSize = 14.sp, color = Slate900, modifier = Modifier.weight(1f))
         if (copyable) {
             IconButton(onClick = onCopy, modifier = Modifier.size(28.dp)) {
                 Icon(
                     Icons.Outlined.ContentCopy,
                     contentDescription = "复制$label",
-                    tint = Color.White,
+                    tint = Slate600,
                     modifier = Modifier.size(16.dp)
                 )
             }
