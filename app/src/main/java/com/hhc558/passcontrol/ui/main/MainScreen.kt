@@ -6,6 +6,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -114,28 +118,50 @@ fun MainScreen(navController: NavHostController) {
         }
     }
 
-    // 智能滚动：展开时确保整卡完整可见，收起时恢复列表位置
+    // 智能滚动：展开时逐帧跟随动画同步平滑滚动（零等待、连贯），收起时恢复列表位置
     LaunchedEffect(expandedId) {
         val current = expandedId
         if (current != null) {
             lastExpandedId = current
-            delay(260)
-            val layoutInfo = listState.layoutInfo
-            val item = layoutInfo.visibleItemsInfo.firstOrNull { it.key == current } ?: return@LaunchedEffect
-            val itemBottom = item.offset + item.size
-            if (itemBottom > layoutInfo.viewportEndOffset) {
-                val index = accounts.indexOfFirst { it.id == current }
-                if (index >= 0) {
-                    val scrollOffset = (layoutInfo.viewportEndOffset - item.size) - layoutInfo.viewportStartOffset
-                    listState.animateScrollToItem(index, scrollOffset.coerceAtLeast(0))
+            var lastSize = -1
+            var stableFrames = 0
+            var frames = 0
+            while (true) {
+                if (++frames > 600) break // 安全上限
+                val layout = listState.layoutInfo
+                val item = layout.visibleItemsInfo.firstOrNull { it.key == current } ?: break
+                val viewportStart = layout.viewportStartOffset
+                val viewportEnd = layout.viewportEndOffset
+                val top = item.offset
+                val bottom = top + item.size
+                val overflow = bottom - viewportEnd
+                val sizeStable = item.size == lastSize
+                lastSize = item.size
+                if (overflow > 0) {
+                    // 底部超出：同步上滑，让卡片底部始终贴齐屏幕底部（与展开动画同一节奏）
+                    stableFrames = 0
+                    listState.scroll { scrollBy(overflow.toFloat()) }
+                } else if (sizeStable) {
+                    stableFrames++
+                    if (stableFrames >= 3) {
+                        // 尺寸已稳定且完整可见；若顶部被裁则下拉回顶
+                        val overTop = viewportStart - top
+                        if (overTop > 1) {
+                            listState.scroll { scrollBy(overTop.toFloat()) }
+                        }
+                        break
+                    }
+                } else {
+                    stableFrames = 0
                 }
+                withFrameNanos { }
             }
         } else {
             val prev = lastExpandedId ?: return@LaunchedEffect
-            delay(260)
-            val layoutInfo = listState.layoutInfo
-            val item = layoutInfo.visibleItemsInfo.firstOrNull { it.key == prev }
-            if (item == null || item.offset > layoutInfo.viewportStartOffset + 120) {
+            waitForStableSize(listState, prev)
+            val layout = listState.layoutInfo
+            val item = layout.visibleItemsInfo.firstOrNull { it.key == prev }
+            if (item == null || item.offset > layout.viewportStartOffset + 120) {
                 val index = accounts.indexOfFirst { it.id == prev }
                 if (index >= 0) listState.animateScrollToItem(index)
             }
@@ -273,12 +299,12 @@ private fun PlatformCard(
 ) {
     val corner by animateDpAsState(
         targetValue = if (expanded) 24.dp else 16.dp,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = 300),
         label = "platformCorner"
     )
     val elevation by animateDpAsState(
         targetValue = if (expanded) 12.dp else 0.dp,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = 300),
         label = "platformElevation"
     )
     val shape = RoundedCornerShape(corner)
@@ -295,7 +321,7 @@ private fun PlatformCard(
             .clip(shape)
             .background(Brush.linearGradient(listOf(GradientBlue, GradientPurple)))
             .clickable(onClick = onToggle)
-            .animateContentSize(animationSpec = tween(durationMillis = 200))
+            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow))
             .padding(16.dp)
     ) {
         Column {
@@ -428,3 +454,25 @@ private fun InfoRow(
         trailing?.invoke()
     }
 }
+
+/** 等待 LazyColumn 中某条目尺寸动画稳定（连续 3 次采样无变化），用于展开/收起后的智能滚动。 */
+private suspend fun waitForStableSize(listState: LazyListState, key: Any) {
+    var lastBottom = -1
+    var stableCount = 0
+    var tries = 0
+    while (tries < 40) {
+        delay(50)
+        tries++
+        val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key } ?: return
+        val bottom = item.offset + item.size
+        if (bottom == lastBottom) {
+            stableCount++
+            if (stableCount >= 3) return
+        } else {
+            stableCount = 0
+        }
+        lastBottom = bottom
+    }
+    delay(150)
+}
+
