@@ -29,7 +29,7 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun save(id: Long, platform: String, username: String, password: String, email: String) {
+    fun save(id: Long, platform: String, username: String, password: String, url: String, email: String) {
         when {
             platform.isBlank() -> { _error.value = "请填写平台名称"; return }
             username.isBlank() -> { _error.value = "请填写账号"; return }
@@ -37,11 +37,12 @@ class EditViewModel(application: Application) : AndroidViewModel(application) {
         }
         _error.value = null
         viewModelScope.launch {
+            val urlTrim = url.trim().takeIf { it.isNotEmpty() }
             val emailTrim = email.trim().takeIf { it.isNotEmpty() }
             if (id <= 0) {
-                repo.add(platform, username, password, emailTrim)
+                repo.add(platform, username, password, urlTrim, emailTrim)
             } else {
-                repo.update(id, platform, username, password, emailTrim)
+                repo.update(id, platform, username, password, urlTrim, emailTrim)
             }
             _done.value = true
         }

@@ -1,9 +1,9 @@
 package com.hhc558.passcontrol.data
 
-import android.content.Context
 import android.content.SharedPreferences
 import com.hhc558.passcontrol.crypto.CryptoManager
 import com.hhc558.passcontrol.util.B64
+import com.hhc558.passcontrol.util.PinyinSort
 import com.hhc558.passcontrol.xlsx.ImportDiff
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -96,27 +96,30 @@ class VaultRepository(
         vaultKey = null
     }
 
+    /** 按平台名称首字母（中文拼音）排序后的账号流。 */
     fun observeAccounts(): Flow<List<AccountView>> =
-        accountDao.observeAll().map { list -> list.map { it.toView() } }
+        accountDao.observeAll().map { list -> list.map { it.toView() }.sortedWith(accountComparator) }
 
-    suspend fun getAllOnce(): List<AccountView> = accountDao.getAll().map { it.toView() }
+    suspend fun getAllOnce(): List<AccountView> =
+        accountDao.getAll().map { it.toView() }.sortedWith(accountComparator)
 
     suspend fun getById(id: Long): AccountView? = accountDao.getById(id)?.toView()
 
-    suspend fun add(platform: String, username: String, password: String, email: String?) {
+    suspend fun add(platform: String, username: String, password: String, url: String?, email: String?) {
         val key = requireKey()
         accountDao.insert(
             Account(
                 platform = platform.trim(),
                 username = username.trim(),
                 passwordEncrypted = crypto.encrypt(key, password.toByteArray(Charsets.UTF_8)),
+                url = url?.trim()?.takeIf { it.isNotEmpty() },
                 email = email?.trim()?.takeIf { it.isNotEmpty() },
                 createdAt = System.currentTimeMillis()
             )
         )
     }
 
-    suspend fun update(id: Long, platform: String, username: String, password: String, email: String?) {
+    suspend fun update(id: Long, platform: String, username: String, password: String, url: String?, email: String?) {
         val existing = accountDao.getById(id) ?: return
         val key = requireKey()
         accountDao.update(
@@ -124,6 +127,7 @@ class VaultRepository(
                 platform = platform.trim(),
                 username = username.trim(),
                 passwordEncrypted = crypto.encrypt(key, password.toByteArray(Charsets.UTF_8)),
+                url = url?.trim()?.takeIf { it.isNotEmpty() },
                 email = email?.trim()?.takeIf { it.isNotEmpty() }
             )
         )
@@ -143,6 +147,7 @@ class VaultRepository(
                     platform = row.platform,
                     username = row.username,
                     passwordEncrypted = crypto.encrypt(key, row.password.toByteArray(Charsets.UTF_8)),
+                    url = row.url,
                     email = row.email,
                     createdAt = row.createdAt ?: now
                 )
@@ -152,6 +157,7 @@ class VaultRepository(
             accountDao.update(
                 item.old.toEntity(
                     passwordEncrypted = crypto.encrypt(key, item.new.password.toByteArray(Charsets.UTF_8)),
+                    url = item.new.url,
                     email = item.new.email
                 )
             )
@@ -166,11 +172,16 @@ class VaultRepository(
     private fun Account.toView(): AccountView {
         val key = requireKey()
         val plain = String(crypto.decrypt(key, passwordEncrypted), Charsets.UTF_8)
-        return AccountView(id, platform, username, plain, email, createdAt)
+        return AccountView(id, platform, username, plain, url, email, createdAt)
     }
 
-    private fun AccountView.toEntity(passwordEncrypted: String, email: String?): Account =
-        Account(id, platform, username, passwordEncrypted, email, createdAt)
+    private fun AccountView.toEntity(passwordEncrypted: String, url: String?, email: String?): Account =
+        Account(id, platform, username, passwordEncrypted, url, email, createdAt)
+
+    private val accountComparator = Comparator<AccountView> { a, b ->
+        val c = PinyinSort.comparePlatform(a.platform, b.platform)
+        if (c != 0) c else a.username.compareTo(b.username)
+    }
 
     private companion object {
         const val KEY_QUESTION = "security_question"

@@ -10,25 +10,36 @@ import org.junit.Test
 
 class DiffEngineTest {
 
-    private fun account(id: Long, platform: String, username: String, password: String, email: String?) =
-        AccountView(id, platform, username, password, email, 0L)
+    private fun account(
+        id: Long,
+        platform: String,
+        username: String,
+        password: String,
+        url: String? = null,
+        email: String? = null
+    ) = AccountView(id, platform, username, password, url, email, 0L)
 
-    private fun row(platform: String, username: String, password: String, email: String?) =
-        ImportRow(platform, username, password, email, null, 1)
+    private fun row(
+        platform: String,
+        username: String,
+        password: String,
+        url: String? = null,
+        email: String? = null
+    ) = ImportRow(platform, username, password, url, email, null, 1)
 
     @Test
     fun detectsAddedModifiedDeletedUnchanged() {
         val current = listOf(
-            account(1, "GitHub", "user1", "old-pass", "a@b.com"),
-            account(2, "淘宝", "taobao", "abc123", null),
-            account(3, "微博", "weibo", "x", null),
-            account(4, "网易", "netease", "y", null)
+            account(1, "GitHub", "user1", "old-pass", "https://github.com", "a@b.com"),
+            account(2, "淘宝", "taobao", "abc123", null, null),
+            account(3, "微博", "weibo", "x", null, null),
+            account(4, "网易", "netease", "y", null, null)
         )
         val rows = listOf(
-            row("GitHub", "user1", "new-pass", "a@b.com"),
-            row("淘宝", "taobao", "abc123", "new@mail.com"),
-            row("支付宝", "ali", "p1", null),
-            row("微博", "weibo", "x", null)
+            row("GitHub", "user1", "new-pass", "https://github.com", "a@b.com"),
+            row("淘宝", "taobao", "abc123", null, "new@mail.com"),
+            row("支付宝", "ali", "p1", null, null),
+            row("微博", "weibo", "x", null, null)
         )
         val diff = DiffEngine.compute(current, rows)
 
@@ -44,20 +55,31 @@ class DiffEngineTest {
 
     @Test
     fun modifiedChangesListed() {
-        val current = listOf(account(1, "A", "a", "old", null))
-        val rows = listOf(row("A", "a", "new", "e@x.com"))
+        val current = listOf(account(1, "A", "a", "old", "https://old.example", "e@x.com"))
+        val rows = listOf(row("A", "a", "new", "https://new.example", "e@x.com"))
         val diff = DiffEngine.compute(current, rows)
         val item = diff.modified[0]
         assertEquals(1L, item.old.id)
         assertEquals(2, item.changes.size)
         assertEquals("密码", item.changes[0].first)
-        assertEquals("邮箱", item.changes[1].first)
+        assertEquals("网址", item.changes[1].first)
+    }
+
+    @Test
+    fun urlChangeMarkedAsModified() {
+        val current = listOf(account(1, "A", "a", "p", "https://old.example", "e@x.com"))
+        val rows = listOf(row("A", "a", "p", "https://new.example", "e@x.com"))
+        val diff = DiffEngine.compute(current, rows)
+        assertEquals(0, diff.added.size)
+        assertEquals(1, diff.modified.size)
+        assertEquals(1, diff.modified[0].changes.size)
+        assertEquals("网址", diff.modified[0].changes[0].first)
     }
 
     @Test
     fun caseInsensitiveTrimMatch() {
-        val current = listOf(account(1, " GitHub ", "User1", "p", null))
-        val rows = listOf(row("github", "user1", "p", null))
+        val current = listOf(account(1, " GitHub ", "User1", "p", null, null))
+        val rows = listOf(row("github", "user1", "p", null, null))
         val diff = DiffEngine.compute(current, rows)
         assertEquals(0, diff.added.size)
         assertEquals(1, diff.unchanged)
@@ -66,12 +88,12 @@ class DiffEngineTest {
 
     @Test
     fun blankAndDuplicateRowsSkipped() {
-        val current = listOf(account(1, "A", "a", "p", null))
+        val current = listOf(account(1, "A", "a", "p", null, null))
         val rows = listOf(
-            row("", "x", "p", null),
-            row("B", "", "p", null),
-            row("A", "a", "p", null),
-            row("A", "a", "p", null)
+            row("", "x", "p", null, null),
+            row("B", "", "p", null, null),
+            row("A", "a", "p", null, null),
+            row("A", "a", "p", null, null)
         )
         val diff = DiffEngine.compute(current, rows)
         assertEquals(0, diff.added.size)
@@ -81,8 +103,8 @@ class DiffEngineTest {
 
     @Test
     fun noChanges() {
-        val current = listOf(account(1, "A", "a", "p", "e@x.com"))
-        val rows = listOf(row("A", "a", "p", "e@x.com"))
+        val current = listOf(account(1, "A", "a", "p", "https://a.example", "e@x.com"))
+        val rows = listOf(row("A", "a", "p", "https://a.example", "e@x.com"))
         val diff = DiffEngine.compute(current, rows)
         assertFalse(diff.hasChanges)
         assertEquals(1, diff.unchanged)
@@ -91,7 +113,7 @@ class DiffEngineTest {
 
     @Test
     fun allDeletedWhenFileEmpty() {
-        val current = listOf(account(1, "A", "a", "p", null), account(2, "B", "b", "p", null))
+        val current = listOf(account(1, "A", "a", "p", null, null), account(2, "B", "b", "p", null, null))
         val diff = DiffEngine.compute(current, emptyList())
         assertEquals(2, diff.deleted.size)
         assertTrue(diff.hasChanges)

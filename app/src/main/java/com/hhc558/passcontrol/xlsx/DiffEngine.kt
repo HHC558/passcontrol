@@ -5,7 +5,7 @@ import com.hhc558.passcontrol.data.AccountView
 /**
  * 导入差异引擎：按「平台名称 + 账号」（trim、忽略大小写）与 APP 内数据比对。
  * - 新增：文件有而 APP 无
- * - 修改：都存在但密码或邮箱不同（保留原创建时间）
+ * - 修改：都存在但密码、网址或邮箱不同（保留原创建时间）
  * - 删除：APP 有而文件无
  * - 无变化 / 跳过（平台或账号为空、文件内重复行）
  */
@@ -40,6 +40,11 @@ object DiffEngine {
                 val changes = ArrayList<Pair<String, Pair<String, String>>>()
                 if (old.password != row.password) {
                     changes.add("密码" to (old.password to row.password))
+                }
+                val oldUrl = old.url?.trim() ?: ""
+                val newUrl = row.url?.trim() ?: ""
+                if (oldUrl != newUrl) {
+                    changes.add("网址" to (oldUrl to newUrl))
                 }
                 val oldEmail = old.email?.trim() ?: ""
                 val newEmail = row.email?.trim() ?: ""

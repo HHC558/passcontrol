@@ -17,7 +17,9 @@ class AppContainer(context: Context) {
     val appContext: Context = context.applicationContext
     private val prefs = appContext.getSharedPreferences("vault_prefs", Context.MODE_PRIVATE)
     val crypto = CryptoManager()
-    private val database: AppDatabase = Room.databaseBuilder(appContext, AppDatabase::class.java, "passcontrol.db").build()
+    private val database: AppDatabase = Room.databaseBuilder(appContext, AppDatabase::class.java, "passcontrol.db")
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     val accountDao: AccountDao = database.accountDao()
     val vaultRepository = VaultRepository(prefs, crypto, accountDao)
     val xlsxService = XlsxService()

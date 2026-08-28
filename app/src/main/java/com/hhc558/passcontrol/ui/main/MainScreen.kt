@@ -21,19 +21,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -73,6 +73,7 @@ fun MainScreen(navController: NavHostController) {
     val toast by container.toastMessage.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var expanded by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var revealed by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var deleteTarget by remember { mutableStateOf<AccountView?>(null) }
 
@@ -99,6 +100,9 @@ fun MainScreen(navController: NavHostController) {
             TopAppBar(
                 title = { Text("密码管家") },
                 actions = {
+                    IconButton(onClick = { navController.navigate("edit?accountId=-1") }) {
+                        Icon(Icons.Outlined.Add, contentDescription = "新增记录")
+                    }
                     IconButton(onClick = {
                         importLauncher.launch(
                             arrayOf(
@@ -135,17 +139,12 @@ fun MainScreen(navController: NavHostController) {
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate("edit?accountId=-1") }) {
-                Icon(Icons.Outlined.Add, contentDescription = "新增记录")
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (accounts.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text(
-                    "暂无账号密码记录\n点击右下角 ➕ 添加",
+                    "暂无账号密码记录\n点击顶栏 ➕ 添加",
                     color = MaterialTheme.colorScheme.secondary,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -154,16 +153,20 @@ fun MainScreen(navController: NavHostController) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(accounts, key = { it.id }) { account ->
-                    AccountCard(
+                    PlatformCard(
                         account = account,
+                        expanded = account.id in expanded,
                         revealed = account.id in revealed,
+                        onToggle = {
+                            expanded = if (account.id in expanded) expanded - account.id else expanded + account.id
+                        },
                         onToggleReveal = {
                             revealed = if (account.id in revealed) revealed - account.id else revealed + account.id
                         },
-                        onClick = { navController.navigate("edit?accountId=${account.id}") },
+                        onEdit = { navController.navigate("edit?accountId=${account.id}") },
                         onDelete = { deleteTarget = account },
                         context = context
                     )
@@ -192,59 +195,73 @@ fun MainScreen(navController: NavHostController) {
     }
 }
 
+/** 平台名称卡片：默认只显示平台名称，点击展开详情。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountCard(
+private fun PlatformCard(
     account: AccountView,
+    expanded: Boolean,
     revealed: Boolean,
+    onToggle: () -> Unit,
     onToggleReveal: () -> Unit,
-    onClick: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
     context: Context
 ) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
+    Card(onClick = onToggle, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     account.platform,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.secondary
+                )
             }
-            Spacer(Modifier.height(2.dp))
-            InfoRow(
-                label = "账号",
-                value = account.username,
-                copyable = true,
-                onCopy = { copyToClipboard(context, "账号", account.username) }
-            )
-            InfoRow(
-                label = "密码",
-                value = if (revealed) account.password else "••••••••",
-                copyable = revealed,
-                onCopy = { copyToClipboard(context, "密码", account.password) },
-                trailing = {
-                    IconButton(onClick = onToggleReveal, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                            contentDescription = if (revealed) "隐藏密码" else "显示密码",
-                            modifier = Modifier.size(18.dp)
-                        )
+            if (expanded) {
+                Spacer(Modifier.height(8.dp))
+                InfoRow(
+                    label = "账号",
+                    value = account.username,
+                    copyable = true,
+                    onCopy = { copyToClipboard(context, "账号", account.username) }
+                )
+                InfoRow(
+                    label = "密码",
+                    value = if (revealed) account.password else "••••••••",
+                    copyable = revealed,
+                    onCopy = { copyToClipboard(context, "密码", account.password) },
+                    trailing = {
+                        IconButton(onClick = onToggleReveal, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                contentDescription = if (revealed) "隐藏密码" else "显示密码",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                )
+                account.url?.let { url ->
+                    InfoRow(label = "网址", value = url)
+                }
+                account.email?.let { email ->
+                    InfoRow(label = "邮箱", value = email)
+                }
+                InfoRow(label = "创建时间", value = Formatters.formatCreatedAt(account.createdAt))
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                        Text("编辑")
+                    }
+                    OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
                     }
                 }
-            )
-            account.email?.let { email ->
-                InfoRow(label = "邮箱", value = email)
             }
-            InfoRow(label = "创建时间", value = Formatters.formatCreatedAt(account.createdAt))
         }
     }
 }

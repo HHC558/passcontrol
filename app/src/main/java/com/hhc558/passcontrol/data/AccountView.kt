@@ -6,6 +6,7 @@ data class AccountView(
     val platform: String,
     val username: String,
     val password: String,
+    val url: String?,
     val email: String?,
     val createdAt: Long
 )

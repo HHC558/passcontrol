@@ -19,13 +19,14 @@ class XlsxException(message: String) : Exception(message)
  * 轻量 .xlsx 读写：无第三方依赖。
  * 写出标准 xlsx（zip + XML，内联字符串），读取兼容 Excel/WPS 常见格式
  * （sharedStrings / inlineStr / 数字 / 日期序列号），表头支持乱序。
+ * 列：平台名称 / 账号 / 密码 / 网址 / 邮箱 / 创建时间。
  */
 class XlsxService {
 
     fun writeRecords(records: List<AccountView>): ByteArray {
-        val headers = listOf("平台名称", "账号", "密码", "邮箱", "创建时间")
+        val headers = listOf("平台名称", "账号", "密码", "网址", "邮箱", "创建时间")
         val rows = records.map {
-            listOf(it.platform, it.username, it.password, it.email ?: "", formatCreatedAt(it.createdAt))
+            listOf(it.platform, it.username, it.password, it.url ?: "", it.email ?: "", formatCreatedAt(it.createdAt))
         }
         return buildXlsx(headers, rows)
     }
@@ -76,7 +77,7 @@ class XlsxService {
         val sb = StringBuilder()
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n")
         sb.append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><cols>")
-        val widths = listOf(24, 24, 26, 26, 20)
+        val widths = listOf(24, 24, 26, 28, 26, 20)
         for (i in widths.indices) {
             sb.append("<col min=\"").append(i + 1).append("\" max=\"").append(i + 1)
                 .append("\" width=\"").append(widths[i]).append("\" customWidth=\"1\"/>")
@@ -285,7 +286,7 @@ class XlsxService {
                 return HeaderInfo(idx, mapping)
             }
         }
-        throw XlsxException("未找到表头行（需要：平台名称/账号/密码/邮箱/创建时间）")
+        throw XlsxException("未找到表头行（需要：平台名称/账号/密码/网址/邮箱/创建时间）")
     }
 
     private fun toImportRow(row: RawRow, mapping: Map<String, String>): ImportRow? {
@@ -294,10 +295,11 @@ class XlsxService {
         val username = cell("username")?.trim() ?: ""
         if (platform.isBlank() && username.isBlank()) return null
         val password = cell("password") ?: ""
+        val url = cell("url")?.trim()?.takeIf { it.isNotEmpty() }
         val email = cell("email")?.trim()?.takeIf { it.isNotEmpty() }
         val createdAtRaw = cell("createdAt")
         val createdAt = createdAtRaw?.let { parseDateCell(it) }
-        return ImportRow(platform, username, password, email, createdAt, row.number)
+        return ImportRow(platform, username, password, url, email, createdAt, row.number)
     }
 
     private fun parseDateCell(raw: String): Long? {
@@ -337,6 +339,7 @@ class XlsxService {
             "平台名称", "platform" -> "platform"
             "账号", "账号名", "account", "username", "登录名" -> "username"
             "密码", "password" -> "password"
+            "网址", "url", "website", "link", "web" -> "url"
             "邮箱", "email", "mail" -> "email"
             "创建时间", "createdat", "createdtime", "time" -> "createdAt"
             else -> null

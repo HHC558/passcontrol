@@ -26,8 +26,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,6 +46,7 @@ fun EditScreen(navController: NavHostController, accountId: Long) {
     var platform by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
@@ -56,6 +57,7 @@ fun EditScreen(navController: NavHostController, accountId: Long) {
             platform = it.platform
             username = it.username
             password = it.password
+            url = it.url ?: ""
             email = it.email ?: ""
         }
     }
@@ -108,6 +110,15 @@ fun EditScreen(navController: NavHostController, accountId: Long) {
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text("网址（选填）") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("邮箱（选填）") },
@@ -129,7 +140,7 @@ fun EditScreen(navController: NavHostController, accountId: Long) {
             }
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = { vm.save(accountId, platform, username, password, email) },
+                onClick = { vm.save(accountId, platform, username, password, url, email) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("保存")
