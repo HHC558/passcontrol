@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
@@ -81,6 +82,7 @@ import com.hhc558.passcontrol.ui.theme.Slate600
 import com.hhc558.passcontrol.ui.theme.Slate700
 import com.hhc558.passcontrol.ui.theme.Slate900
 import com.hhc558.passcontrol.util.Formatters
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -96,6 +98,8 @@ fun MainScreen(navController: NavHostController) {
 
     val snackbarHostState = remember { SnackbarHostState() }
     var expandedId by remember { mutableStateOf<Long?>(null) }
+    val listState = rememberLazyListState()
+    var lastExpandedId by remember { mutableStateOf<Long?>(null) }
     var revealed by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var deleteTarget by remember { mutableStateOf<AccountView?>(null) }
 
@@ -107,6 +111,34 @@ fun MainScreen(navController: NavHostController) {
         if (navigateToPreview) {
             vm.consumeNavigateToPreview()
             navController.navigate("import_preview")
+        }
+    }
+
+    // 智能滚动：展开时确保整卡完整可见，收起时恢复列表位置
+    LaunchedEffect(expandedId) {
+        val current = expandedId
+        if (current != null) {
+            lastExpandedId = current
+            delay(260)
+            val layoutInfo = listState.layoutInfo
+            val item = layoutInfo.visibleItemsInfo.firstOrNull { it.key == current } ?: return@LaunchedEffect
+            val itemBottom = item.offset + item.size
+            if (itemBottom > layoutInfo.viewportEndOffset) {
+                val index = accounts.indexOfFirst { it.id == current }
+                if (index >= 0) {
+                    val scrollOffset = (layoutInfo.viewportEndOffset - item.size) - layoutInfo.viewportStartOffset
+                    listState.animateScrollToItem(index, scrollOffset.coerceAtLeast(0))
+                }
+            }
+        } else {
+            val prev = lastExpandedId ?: return@LaunchedEffect
+            delay(260)
+            val layoutInfo = listState.layoutInfo
+            val item = layoutInfo.visibleItemsInfo.firstOrNull { it.key == prev }
+            if (item == null || item.offset > layoutInfo.viewportStartOffset + 120) {
+                val index = accounts.indexOfFirst { it.id == prev }
+                if (index >= 0) listState.animateScrollToItem(index)
+            }
         }
     }
 
@@ -183,6 +215,7 @@ fun MainScreen(navController: NavHostController) {
                     }
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
