@@ -4,10 +4,13 @@ import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,8 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Add
@@ -24,22 +29,18 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,17 +51,31 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.hhc558.passcontrol.PassControlApp
 import com.hhc558.passcontrol.data.AccountView
+import com.hhc558.passcontrol.ui.BlackButton
+import com.hhc558.passcontrol.ui.GlassBackground
+import com.hhc558.passcontrol.ui.GlassCard
 import com.hhc558.passcontrol.ui.copyToClipboard
+import com.hhc558.passcontrol.ui.openUrl
+import com.hhc558.passcontrol.ui.theme.ErrorRed
+import com.hhc558.passcontrol.ui.theme.Slate400
+import com.hhc558.passcontrol.ui.theme.Slate500
+import com.hhc558.passcontrol.ui.theme.Slate600
+import com.hhc558.passcontrol.ui.theme.Slate700
+import com.hhc558.passcontrol.ui.theme.Slate900
 import com.hhc558.passcontrol.util.Formatters
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(navController: NavHostController) {
     val vm: MainViewModel = viewModel()
@@ -73,7 +88,7 @@ fun MainScreen(navController: NavHostController) {
     val toast by container.toastMessage.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
-    var expanded by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var expandedId by remember { mutableStateOf<Long?>(null) }
     var revealed by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var deleteTarget by remember { mutableStateOf<AccountView?>(null) }
 
@@ -95,13 +110,25 @@ fun MainScreen(navController: NavHostController) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("密码管家") },
-                actions = {
+    GlassBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { padding ->
+            GlassCard(
+                modifier = Modifier.padding(padding).padding(16.dp).fillMaxSize(),
+                contentPadding = 20.dp
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "密码管家",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Slate900,
+                        modifier = Modifier.weight(1f)
+                    )
                     IconButton(onClick = { navController.navigate("edit?accountId=-1") }) {
-                        Icon(Icons.Outlined.Add, contentDescription = "新增记录")
+                        Icon(Icons.Outlined.Add, contentDescription = "新增记录", tint = Slate700)
                     }
                     IconButton(onClick = {
                         importLauncher.launch(
@@ -113,7 +140,7 @@ fun MainScreen(navController: NavHostController) {
                             )
                         )
                     }) {
-                        Icon(Icons.Outlined.FileUpload, contentDescription = "导入 xlsx")
+                        Icon(Icons.Outlined.FileUpload, contentDescription = "导入 xlsx", tint = Slate700)
                     }
                     IconButton(onClick = {
                         scope.launch {
@@ -128,48 +155,45 @@ fun MainScreen(navController: NavHostController) {
                             }
                         }
                     }) {
-                        Icon(Icons.Outlined.Share, contentDescription = "导出并分享")
+                        Icon(Icons.Outlined.Share, contentDescription = "导出并分享", tint = Slate700)
                     }
                     IconButton(onClick = {
                         vm.logout()
                         navController.navigate("login") { popUpTo("main") { inclusive = true } }
                     }) {
-                        Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = "退出登录")
+                        Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = "退出登录", tint = Slate700)
                     }
                 }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
-        if (accounts.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(
-                    "暂无账号密码记录\n点击顶栏 ➕ 添加",
-                    color = MaterialTheme.colorScheme.secondary,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(accounts, key = { it.id }) { account ->
-                    PlatformCard(
-                        account = account,
-                        expanded = account.id in expanded,
-                        revealed = account.id in revealed,
-                        onToggle = {
-                            expanded = if (account.id in expanded) expanded - account.id else expanded + account.id
-                        },
-                        onToggleReveal = {
-                            revealed = if (account.id in revealed) revealed - account.id else revealed + account.id
-                        },
-                        onEdit = { navController.navigate("edit?accountId=${account.id}") },
-                        onDelete = { deleteTarget = account },
-                        context = context
-                    )
+                Spacer(Modifier.height(20.dp))
+                if (accounts.isEmpty()) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(
+                            "暂无账号密码记录\n点击右上角 ➕ 添加",
+                            fontSize = 14.sp,
+                            color = Slate500,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(accounts, key = { it.id }) { account ->
+                            PlatformCard(
+                                account = account,
+                                expanded = expandedId == account.id,
+                                revealed = account.id in revealed,
+                                onToggle = { expandedId = if (expandedId == account.id) null else account.id },
+                                onToggleReveal = {
+                                    revealed = if (account.id in revealed) revealed - account.id else revealed + account.id
+                                },
+                                onEdit = { navController.navigate("edit?accountId=${account.id}") },
+                                onDelete = { deleteTarget = account },
+                                context = context
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -185,7 +209,7 @@ fun MainScreen(navController: NavHostController) {
                     vm.delete(target)
                     deleteTarget = null
                 }) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text("删除", color = ErrorRed)
                 }
             },
             dismissButton = {
@@ -195,8 +219,7 @@ fun MainScreen(navController: NavHostController) {
     }
 }
 
-/** 平台名称卡片：默认只显示平台名称，点击展开详情。 */
-@OptIn(ExperimentalMaterial3Api::class)
+/** 平台名称卡片：默认只显示平台名称，点击展开详情（同一时间仅展开一条）。 */
 @Composable
 private fun PlatformCard(
     account: AccountView,
@@ -208,22 +231,32 @@ private fun PlatformCard(
     onDelete: () -> Unit,
     context: Context
 ) {
-    Card(onClick = onToggle, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = if (expanded) 0.72f else 0.42f))
+            .clickable(onClick = onToggle)
+            .animateContentSize(animationSpec = tween(durationMillis = 200))
+            .padding(16.dp)
+    ) {
+        Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     account.platform,
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Slate900,
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
                     if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     contentDescription = if (expanded) "收起" else "展开",
-                    tint = MaterialTheme.colorScheme.secondary
+                    tint = Slate400
                 )
             }
             if (expanded) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
                 InfoRow(
                     label = "账号",
                     value = account.username,
@@ -240,25 +273,53 @@ private fun PlatformCard(
                             Icon(
                                 if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription = if (revealed) "隐藏密码" else "显示密码",
+                                tint = Slate600,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 )
                 account.url?.let { url ->
-                    InfoRow(label = "网址", value = url)
+                    InfoRow(
+                        label = "网址",
+                        value = url,
+                        trailing = {
+                            IconButton(onClick = { openUrl(context, url) }, modifier = Modifier.size(28.dp)) {
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.OpenInNew,
+                                    contentDescription = "打开网址",
+                                    tint = Slate600,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            IconButton(onClick = { copyToClipboard(context, "网址", url) }, modifier = Modifier.size(28.dp)) {
+                                Icon(
+                                    Icons.Outlined.ContentCopy,
+                                    contentDescription = "复制网址",
+                                    tint = Slate600,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    )
                 }
                 account.email?.let { email ->
                     InfoRow(label = "邮箱", value = email)
                 }
                 InfoRow(label = "创建时间", value = Formatters.formatCreatedAt(account.createdAt))
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(18.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                        Text("编辑")
+                    BlackButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                        Text("编辑", fontSize = 15.sp)
                     }
-                    OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
-                        Text("删除", color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
+                        Text(
+                            "删除",
+                            fontSize = 15.sp,
+                            color = ErrorRed,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
@@ -276,24 +337,16 @@ private fun InfoRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
     ) {
-        Text(
-            "$label：",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
-        )
+        Text(label, fontSize = 13.sp, color = Slate500, modifier = Modifier.width(60.dp))
+        Text(value, fontSize = 14.sp, color = Slate900, modifier = Modifier.weight(1f))
         if (copyable) {
             IconButton(onClick = onCopy, modifier = Modifier.size(28.dp)) {
                 Icon(
                     Icons.Outlined.ContentCopy,
                     contentDescription = "复制$label",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = Slate600,
                     modifier = Modifier.size(16.dp)
                 )
             }

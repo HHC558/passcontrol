@@ -2,11 +2,18 @@ package com.hhc558.passcontrol.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val BluePrimary = Color(0xFF2563EB)
-val BlueDark = Color(0xFF1D4ED8)
-val BlueContainer = Color(0xFFDBEAFE)
-val OnBlueContainer = Color(0xFF1E3A8A)
-val GreenAdded = Color(0xFF16A34A)
-val RedDeleted = Color(0xFFDC2626)
-val SlateText = Color(0xFF475569)
-val SurfaceBg = Color(0xFFF8FAFC)
+// Slate 中性灰
+val Slate50 = Color(0xFFF8FAFC)
+val Slate100 = Color(0xFFF1F5F9)
+val Slate200 = Color(0xFFE2E8F0)
+val Slate300 = Color(0xFFCBD5E1)
+val Slate400 = Color(0xFF94A3B8)
+val Slate500 = Color(0xFF64748B)
+val Slate600 = Color(0xFF475569)
+val Slate700 = Color(0xFF334155)
+val Slate800 = Color(0xFF1E293B)
+val Slate900 = Color(0xFF0F172A)
+
+val PureBlack = Color(0xFF000000)
+val ErrorRed = Color(0xFFDC2626)
+val GlassWhite = Color(0xFFFFFFFF)
